@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { createPrisma } from "../../lib/prisma";
 import { sign } from "hono/jwt";
 import authMiddleware from "../../middlewares/authMiddleware";
+import { loginSchema, signupSchema } from "@onerahul/quill-common-app";
 
 const userRouter = new Hono<{
   Bindings: {
@@ -23,6 +24,12 @@ userRouter.get("/", (c) => {
 userRouter.post("/login", async (c) => {
   try {
     const body = await c.req.json();
+    const { success } = loginSchema.safeParse(body);
+    if (!success) {
+      return c.json({
+        message: "Invalid input format",
+      });
+    }
     const prisma = createPrisma(c.env);
 
     const user = await prisma.user.findUnique({
@@ -34,7 +41,14 @@ userRouter.post("/login", async (c) => {
     if (!user) {
       c.status(404);
       return c.json({
-        message: "User not found",
+        message: "User not found with this email",
+      });
+    }
+
+    if (user.password !== body.password) {
+      c.status(401);
+      return c.json({
+        message: "Invalid Password",
       });
     }
 
@@ -65,6 +79,12 @@ userRouter.post("/signup", async (c) => {
   try {
     const body = await c.req.json();
     const prisma = createPrisma(c.env);
+    const { success } = signupSchema.safeParse(body);
+    if (!success) {
+      return c.json({
+        message: "Invalid input format",
+      });
+    }
 
     if (!body.email || !body.password || !body.name) {
       return c.json({

@@ -1,20 +1,18 @@
 import { Hono } from "hono";
 import { createPrisma } from "../../lib/prisma";
+import authMiddleware from "../../middlewares/authMiddleware";
 
 const postRouter = new Hono<{
   Bindings: {
     DATABASE_URL: string;
   };
+  Variables: {
+    userId: string;
+  };
 }>();
 
-postRouter.get("/", (c) => {
-  return c.json({
-    message: "Hello there from Post router",
-  });
-});
-
 // Fetch a single post by id in params
-postRouter.get("/:id", async (c) => {
+postRouter.get("/:id", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
     const prisma = createPrisma(c.env);
@@ -64,18 +62,16 @@ postRouter.get("/", async (c) => {
 });
 
 // Add a new post
-postRouter.post("/post", async (c) => {
+postRouter.post("/post", authMiddleware, async (c) => {
   try {
     const body = await c.req.json();
     const prisma = createPrisma(c.env);
-
-    const userId = "dwfwge";
 
     const post = await prisma.post.create({
       data: {
         title: body.title,
         description: body.description,
-        authorId: userId,
+        authorId: c.get("userId"),
       },
     });
 
@@ -94,14 +90,30 @@ postRouter.post("/post", async (c) => {
 });
 
 // Update a post
-postRouter.put("/:id", async (c) => {
+postRouter.put("/:id", authMiddleware, async (c) => {
   try {
     const id = c.req.param("id");
     const prisma = createPrisma(c.env);
 
     const body = await c.req.json();
 
-    const post = await prisma.post.update({
+    const post = await prisma.post.findUnique({
+      where: {
+        id: id,
+      },
+    });
+    if (!post) {
+      return c.json({
+        message: "Post not found",
+      });
+    }
+    if (post.authorId !== c.get("userId")) {
+      return c.json({
+        message: "You are not authorized to update this post",
+      });
+    }
+
+    const updatedPost = await prisma.post.update({
       where: {
         id: id,
       },
@@ -113,7 +125,7 @@ postRouter.put("/:id", async (c) => {
 
     return c.json({
       message: "Post updated successfully",
-      post,
+      updatedPost,
     });
   } catch (e) {
     return c.json({

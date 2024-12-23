@@ -1,11 +1,15 @@
 import { Hono } from "hono";
 import { createPrisma } from "../../lib/prisma";
 import { sign } from "hono/jwt";
+import authMiddleware from "../../middlewares/authMiddleware";
 
 const userRouter = new Hono<{
   Bindings: {
     DATABASE_URL: string;
     JWT_SECRET: string;
+  };
+  Variables: {
+    userId: string;
   };
 }>();
 
@@ -107,6 +111,30 @@ userRouter.post("/signup", async (c) => {
         email: user.email,
       },
       token: token,
+    });
+  } catch (e) {
+    return c.json({
+      message: "Internal Server Error",
+    });
+  }
+});
+
+userRouter.get("/me", authMiddleware, async (c) => {
+  try {
+    const prisma = createPrisma(c.env);
+    const user = await prisma.user.findUnique({
+      where: {
+        id: c.get("userId"),
+      },
+    });
+    if (!user) {
+      return c.json({
+        message: "User not found",
+      });
+    }
+    return c.json({
+      message: "User fetched successfully",
+      user,
     });
   } catch (e) {
     return c.json({

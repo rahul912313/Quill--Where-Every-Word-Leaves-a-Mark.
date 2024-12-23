@@ -31,3 +31,10 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+
+# Prisma
+prisma/migrations/
+prisma/migrations/migration_lock.toml
+
+# Cloudflare Workers
+wrangler.*.toml

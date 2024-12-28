@@ -8,6 +8,25 @@ const app = new Hono<{
   };
 }>();
 
+// CORS Middleware
+app.use("*", async (c, next) => {
+  c.res.headers.append("Access-Control-Allow-Origin", "*"); // Allow all origins
+  c.res.headers.append(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  c.res.headers.append(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization"
+  );
+
+  if (c.req.method === "OPTIONS") {
+    return c.text("", 204);
+  }
+
+  await next();
+});
+
 app.route("api/v1", rootRouter);
 app.get("/", (c) => {
   const prisma = createPrisma(c.env);

@@ -3,7 +3,7 @@ import { verify } from "hono/jwt";
 
 const authMiddleware = async (c: Context, next: Next) => {
   const authHeader = c.req.header("Authorization");
-
+  console.log("Im inside miidleware");
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     c.status(401);
     return c.json({
